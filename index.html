@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#5b21b6">
+<title>Erdem'in Matematik Macerası</title>
+<style>
+  :root{
+    --bg1:#4c1d95; --bg2:#6d28d9; --bg3:#8b5cf6;
+    --card:#ffffff; --ink:#1e1b3a; --muted:#6b6890;
+    --good:#16a34a; --good-bg:#dcfce7;
+    --bad:#dc2626; --bad-bg:#fee2e2;
+    --accent:#f59e0b; --accent2:#ec4899;
+    --ring:#a78bfa;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,'Trebuchet MS',sans-serif;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2) 55%,var(--bg3));
+    background-attachment:fixed;
+    color:var(--ink);
+    min-height:100dvh;
+    display:flex; align-items:center; justify-content:center;
+    padding:14px;
+    overflow-x:hidden;
+    user-select:none; -webkit-user-select:none;
+  }
+  .app{
+    width:100%; max-width:480px;
+    background:rgba(255,255,255,.10);
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:28px;
+    padding:18px;
+    box-shadow:0 24px 60px rgba(0,0,0,.35);
+    backdrop-filter:blur(6px);
+  }
+  /* ---- top bar ---- */
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px;}
+  .pill{
+    display:flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,.9); color:var(--ink);
+    padding:8px 14px; border-radius:999px; font-weight:800; font-size:15px;
+    box-shadow:0 4px 12px rgba(0,0,0,.15);
+  }
+  .pill .big{font-size:18px;}
+  .brand{color:#fff; font-weight:900; font-size:16px; letter-spacing:.3px; text-shadow:0 2px 6px rgba(0,0,0,.3);}
+  .iconbtn{
+    background:rgba(255,255,255,.9); border:none; width:42px; height:42px; border-radius:50%;
+    font-size:20px; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.15);
+  }
+  /* ---- screens ---- */
+  .screen{display:none; animation:pop .35s ease;}
+  .screen.active{display:block;}
+  @keyframes pop{from{opacity:0; transform:translateY(14px) scale(.98);} to{opacity:1; transform:none;}}
+
+  .hero{
+    background:var(--card); border-radius:22px; padding:22px 18px; text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.18);
+  }
+  .hero h1{font-size:26px; color:var(--bg2); margin-bottom:4px;}
+  .hero .sub{color:var(--muted); font-size:15px; font-weight:600; margin-bottom:6px;}
+  .mascot{font-size:58px; line-height:1; margin:6px 0 10px; display:inline-block; animation:bob 2.4s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg);}50%{transform:translateY(-8px) rotate(3deg);}}
+
+  .label{color:#fff; font-weight:800; margin:16px 4px 8px; font-size:15px; text-shadow:0 1px 3px rgba(0,0,0,.3);}
+
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .op{
+    position:relative;
+    background:var(--card); border:none; border-radius:20px; padding:16px 10px;
+    cursor:pointer; text-align:center; box-shadow:0 6px 16px rgba(0,0,0,.16);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .op:active{transform:scale(.95);}
+  .op .emo{font-size:34px; display:block; line-height:1;}
+  .op .nm{font-weight:800; font-size:16px; margin-top:6px; color:var(--ink);}
+  .op .sym{position:absolute; top:8px; right:12px; font-size:22px; font-weight:900; color:var(--ring);}
+  .op.mix{grid-column:1 / -1; background:linear-gradient(120deg,#f59e0b,#ec4899); color:#fff;}
+  .op.mix .nm{color:#fff;}
+  .op.mix .emo{filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));}
+
+  /* ---- level select ---- */
+  .levels{display:flex; flex-direction:column; gap:12px;}
+  .lv{
+    display:flex; align-items:center; gap:14px;
+    background:var(--card); border:none; border-radius:18px; padding:14px 16px;
+    cursor:pointer; box-shadow:0 6px 16px rgba(0,0,0,.16); text-align:left; width:100%;
+    transition:transform .12s ease;
+  }
+  .lv:active{transform:scale(.97);}
+  .lv .lvnum{
+    flex:0 0 46px; height:46px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+    font-size:22px; font-weight:900; color:#fff;
+  }
+  .lv1 .lvnum{background:#22c55e;} .lv2 .lvnum{background:#3b82f6;}
+  .lv3 .lvnum{background:#f59e0b;} .lv4 .lvnum{background:#ef4444;}
+  .lv .lvtxt{flex:1;}
+  .lv .lvtxt b{font-size:16px;} .lv .lvtxt span{display:block; color:var(--muted); font-size:13px; font-weight:600;}
+  .lv .lvstars{font-size:14px; letter-spacing:1px; min-width:52px; text-align:right;}
+  .lv.locked{opacity:.55; cursor:not-allowed;}
+  .lv.locked .lvnum{background:#9ca3af;}
+
+  .backbtn{
+    background:rgba(255,255,255,.9); border:none; border-radius:14px; padding:10px 16px;
+    font-weight:800; cursor:pointer; margin-bottom:14px; font-size:15px; box-shadow:0 4px 10px rgba(0,0,0,.14);
+  }
+
+  /* ---- quiz ---- */
+  .dots{display:flex; gap:8px; justify-content:center; margin-bottom:14px;}
+  .dot{width:34px; height:8px; border-radius:99px; background:rgba(255,255,255,.35);}
+  .dot.done{background:#22c55e;} .dot.miss{background:#ef4444;} .dot.now{background:#fff;}
+
+  .qcard{
+    background:var(--card); border-radius:24px; padding:22px 18px; text-align:center;
+    box-shadow:0 12px 30px rgba(0,0,0,.20);
+  }
+  .qmeta{color:var(--muted); font-weight:700; font-size:14px; margin-bottom:6px;}
+  .question{font-size:44px; font-weight:900; color:var(--ink); letter-spacing:1px; margin:6px 0 14px;}
+  .answerbox{
+    height:64px; border-radius:16px; border:3px dashed var(--ring);
+    display:flex; align-items:center; justify-content:center;
+    font-size:34px; font-weight:900; color:var(--bg2); background:#faf5ff;
+    transition:all .15s ease;
+  }
+  .answerbox.filled{border-style:solid;}
+  .answerbox.correct{border-color:var(--good); background:var(--good-bg); color:var(--good);}
+  .answerbox.wrong{border-color:var(--bad); background:var(--bad-bg); color:var(--bad);}
+  .fb{min-height:26px; font-weight:800; font-size:17px; margin-top:12px;}
+  .fb.correct{color:var(--good);} .fb.wrong{color:var(--bad);}
+
+  /* keypad */
+  .keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px;}
+  .key{
+    background:var(--card); border:none; border-radius:16px; padding:16px 0; font-size:26px; font-weight:800;
+    color:var(--ink); cursor:pointer; box-shadow:0 5px 0 rgba(0,0,0,.12); transition:transform .06s, box-shadow .06s;
+  }
+  .key:active{transform:translateY(4px); box-shadow:0 1px 0 rgba(0,0,0,.12);}
+  .key.del{background:#fde68a;} .key.ok{background:linear-gradient(120deg,#22c55e,#16a34a); color:#fff; box-shadow:0 5px 0 #15803d;}
+  .key.ok:active{box-shadow:0 1px 0 #15803d;}
+  .key.ok:disabled{opacity:.5;}
+  .nextbtn{
+    width:100%; margin-top:14px; padding:16px; border:none; border-radius:18px;
+    background:linear-gradient(120deg,#f59e0b,#ec4899); color:#fff; font-size:19px; font-weight:900;
+    cursor:pointer; box-shadow:0 8px 20px rgba(236,72,153,.4);
+  }
+  .nextbtn:active{transform:scale(.98);}
+
+  /* ---- results ---- */
+  .result{background:var(--card); border-radius:24px; padding:26px 20px; text-align:center; box-shadow:0 12px 30px rgba(0,0,0,.2);}
+  .result .big{font-size:66px; line-height:1; margin-bottom:6px;}
+  .result h2{font-size:24px; color:var(--bg2); margin-bottom:8px;}
+  .result p{color:var(--muted); font-weight:600; font-size:15px; margin-bottom:14px;}
+  .scorebar{display:flex; justify-content:center; gap:10px; margin:8px 0 16px;}
+  .starbox{font-size:40px; filter:grayscale(1) opacity(.4);}
+  .starbox.on{filter:none; animation:star .5s ease backwards;}
+  @keyframes star{from{transform:scale(0) rotate(-40deg);} to{transform:scale(1) rotate(0);}}
+  .rowbtns{display:flex; gap:10px;}
+  .rowbtns button{flex:1; padding:15px; border:none; border-radius:16px; font-weight:900; font-size:16px; cursor:pointer;}
+  .btn-again{background:linear-gradient(120deg,#22c55e,#16a34a); color:#fff; box-shadow:0 6px 16px rgba(22,163,74,.35);}
+  .btn-home{background:#ede9fe; color:var(--bg2);}
+  .newbadge{margin-top:14px; background:#fef3c7; color:#92400e; font-weight:800; padding:10px; border-radius:14px; font-size:14px; display:none;}
+  .newbadge.show{display:block; animation:pop .4s ease;}
+
+  /* confetti */
+  #fx{position:fixed; inset:0; pointer-events:none; z-index:60;}
+  .conf{position:absolute; width:11px; height:11px; will-change:transform,opacity;}
+  .foot{text-align:center; color:rgba(255,255,255,.7); font-size:12px; font-weight:600; margin-top:14px;}
+
+  /* veli / rapor */
+  .velibtn{
+    display:block; width:100%; margin-top:12px;
+    background:rgba(255,255,255,.16); color:#fff; border:1px solid rgba(255,255,255,.28);
+    border-radius:16px; padding:12px; font-weight:800; font-size:14px; cursor:pointer;
+  }
+  .velibtn:active{transform:scale(.98);}
+  .sendbtn{
+    width:100%; margin-top:10px; padding:15px; border:none; border-radius:16px;
+    background:linear-gradient(120deg,#25D366,#128C7E); color:#fff; font-size:17px; font-weight:900;
+    cursor:pointer; box-shadow:0 6px 16px rgba(18,140,126,.4); display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .sendbtn:active{transform:scale(.98);}
+  .repcard{background:var(--card); border-radius:20px; padding:18px; box-shadow:0 10px 26px rgba(0,0,0,.18);}
+  .repcard h2{color:var(--bg2); font-size:20px; margin-bottom:2px;}
+  .repcard .when{color:var(--muted); font-size:13px; font-weight:600; margin-bottom:12px;}
+  .stat{display:flex; justify-content:space-between; align-items:center; padding:11px 4px; border-bottom:1px solid #eee;}
+  .stat:last-child{border-bottom:none;}
+  .stat b{font-size:15px;} .stat .v{font-weight:900; color:var(--bg2); font-size:16px;}
+  .oprow{display:flex; justify-content:space-between; align-items:center; padding:9px 4px; font-size:14px;}
+  .oprow .bar{flex:1; height:8px; background:#eee; border-radius:99px; margin:0 10px; overflow:hidden;}
+  .oprow .bar i{display:block; height:100%; background:linear-gradient(90deg,#22c55e,#16a34a);}
+  .note{background:#fef3c7; color:#92400e; border-radius:14px; padding:11px; font-size:13px; font-weight:600; margin-top:12px;}
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(30px);
+    background:#111827; color:#fff; padding:13px 20px; border-radius:14px; font-weight:800; font-size:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.4); opacity:0; transition:all .3s ease; z-index:80; max-width:88vw; text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<div class="toast" id="toast"></div>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">🎓 Matematik</div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <div class="pill"><span class="big">⭐</span><span id="stars">0</span></div>
+      <div class="pill"><span class="big">🔥</span><span id="streak">0</span></div>
+      <button class="iconbtn" id="sound" title="Ses">🔊</button>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <section class="screen active" id="home">
+    <div class="hero">
+      <span class="mascot">🦉</span>
+      <h1 id="hello">Merhaba Erdem!</h1>
+      <div class="sub">Bugün hangi işlemle antrenman yapalım?</div>
+    </div>
+    <div class="label">İşlem seç</div>
+    <div class="grid" id="ops"></div>
+    <button class="velibtn" onclick="openReport()">👨‍👩‍👦 Veli Raporu</button>
+    <div class="foot">3 soruluk sınavlarla adım adım güçlen 💪</div>
+  </section>
+
+  <!-- LEVELS -->
+  <section class="screen" id="levelsel">
+    <button class="backbtn" onclick="go('home')">← Geri</button>
+    <div class="label" id="levTitle">Seviye seç</div>
+    <div class="levels" id="levels"></div>
+    <div class="foot">Bir seviyeyi 2/3 veya daha iyi geçince sonraki açılır 🔓</div>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="screen" id="quiz">
+    <button class="backbtn" onclick="quitQuiz()">← Vazgeç</button>
+    <div class="dots" id="dots"></div>
+    <div class="qcard">
+      <div class="qmeta" id="qmeta">Soru 1 / 3</div>
+      <div class="question" id="question">2 + 2</div>
+      <div class="answerbox" id="answerbox">?</div>
+      <div class="fb" id="fb"></div>
+      <div class="keypad" id="keypad"></div>
+      <button class="nextbtn" id="nextbtn" style="display:none">Sonraki soru →</button>
+    </div>
+  </section>
+
+  <!-- RESULT -->
+  <section class="screen" id="result">
+    <div class="result">
+      <div class="big" id="rEmo">🎉</div>
+      <h2 id="rTitle">Tebrikler Erdem!</h2>
+      <div class="scorebar" id="rStars"></div>
+      <p id="rMsg">Harikaydın!</p>
+      <div class="newbadge" id="newbadge">🔓 Yeni seviye açıldı!</div>
+      <button class="sendbtn" id="sendDad" onclick="shareReport()">📲 WhatsApp'tan Babama Gönder</button>
+      <div class="rowbtns" style="margin-top:10px;">
+        <button class="btn-again" onclick="replay()">🔁 Tekrar</button>
+        <button class="btn-home" onclick="go('home')">🏠 Ana menü</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORT (Veli) -->
+  <section class="screen" id="report2">
+    <button class="backbtn" onclick="go('home')">← Geri</button>
+    <div class="repcard">
+      <h2>👨‍👩‍👦 Veli Raporu</h2>
+      <div class="when" id="repWhen">Bu oturum</div>
+      <div class="stat"><b>⭐ Toplanan yıldız</b><span class="v" id="repStars">0</span></div>
+      <div class="stat"><b>📝 Çözülen sınav</b><span class="v" id="repQuiz">0</span></div>
+      <div class="stat"><b>✅ Doğru / Toplam soru</b><span class="v" id="repQ">0 / 0</span></div>
+      <div class="stat"><b>🎯 Başarı oranı</b><span class="v" id="repAcc">—</span></div>
+      <div id="repByOp" style="margin-top:10px;"></div>
+      <button class="sendbtn" onclick="shareReport()">📲 WhatsApp'tan Babama Gönder</button>
+      <div class="note" id="repNote"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const KID = "Erdem";
+document.getElementById('hello').textContent = "Merhaba " + KID + "!";
+
+/* ---------- veli / paylaşım ayarları ---------- */
+const CONFIG = {
+  parentName: "Baba",
+  whatsappNumber: ""   // isteğe bağlı: uluslararası numara (ör. 905xxxxxxxxx). Boşsa kişi seçtirir.
+};
+const sessionStats = {
+  startedAt: new Date(),
+  quizzes: 0, totalQ: 0, totalCorrect: 0,
+  byOp: {}   // op -> {q, correct}
+};
+function fmtWhen(d){
+  try{ return d.toLocaleString('tr-TR',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return d.toString(); }
+}
+
+/* ---------- state (oturum boyunca) ---------- */
+const state = {
+  stars: 0,
+  streak: 0,
+  sound: true,
+  // her işlem için açık seviye (1 = sadece 1. seviye açık)
+  unlocked: { add:1, sub:1, mul:1, div:1, mix:1 },
+  op:null, level:1,
+};
+
+const OPS = [
+  {id:'add', nm:'Toplama', emo:'➕', sym:'+'},
+  {id:'sub', nm:'Çıkarma', emo:'➖', sym:'−'},
+  {id:'mul', nm:'Çarpma', emo:'✖️', sym:'×'},
+  {id:'div', nm:'Bölme', emo:'➗', sym:'÷'},
+];
+const OPNAME = {add:'Toplama', sub:'Çıkarma', mul:'Çarpma', div:'Bölme', mix:'Karışık'};
+const LEVELNAMES = ['Kolay','Orta','Zor','Uzman'];
+const LEVELDESC = {
+  add:['Küçük sayılarla toplama','280 + 48 gibi toplamalar','Üç basamaklı toplama','Büyük sayılarla toplama'],
+  sub:['Küçük çıkarmalar','İki-üç basamaklı çıkarma','Üç basamaklı çıkarma','Büyük sayılarla çıkarma'],
+  mul:['Çarpım tablosu','İki basamak × tek basamak','İki basamak × iki basamak','Zorlu çarpmalar'],
+  div:['Basit bölme','İki basamaklı bölme','Üç basamaklı bölme','Zorlu bölmeler'],
+  mix:['Dört işlem — kolay','Dört işlem — orta','Dört işlem — zor','Dört işlem — uzman'],
+};
+
+/* ---------- ekran yönetimi ---------- */
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function syncHud(){
+  document.getElementById('stars').textContent = state.stars;
+  document.getElementById('streak').textContent = state.streak;
+}
+
+/* ---------- ana menü ---------- */
+function buildHome(){
+  const wrap = document.getElementById('ops');
+  wrap.innerHTML='';
+  OPS.forEach(o=>{
+    const b=document.createElement('button');
+    b.className='op';
+    b.innerHTML=`<span class="sym">${o.sym}</span><span class="emo">${o.emo}</span><span class="nm">${o.nm}</span>`;
+    b.onclick=()=>openLevels(o.id);
+    wrap.appendChild(b);
+  });
+  const mix=document.createElement('button');
+  mix.className='op mix';
+  mix.innerHTML=`<span class="emo">🎲</span><span class="nm">Karışık — Hepsi bir arada</span>`;
+  mix.onclick=()=>openLevels('mix');
+  wrap.appendChild(mix);
+}
+
+/* ---------- seviye seçimi ---------- */
+function openLevels(op){
+  state.op=op;
+  document.getElementById('levTitle').textContent = OPNAME[op] + " — Seviye seç";
+  const wrap=document.getElementById('levels'); wrap.innerHTML='';
+  for(let i=1;i<=4;i++){
+    const unlocked = i<=state.unlocked[op];
+    const b=document.createElement('button');
+    b.className='lv lv'+i+(unlocked?'':' locked');
+    b.innerHTML=`<div class="lvnum">${unlocked?i:'🔒'}</div>
+      <div class="lvtxt"><b>Seviye ${i} · ${LEVELNAMES[i-1]}</b><span>${LEVELDESC[op][i-1]}</span></div>
+      <div class="lvstars">${unlocked?'▶':''}</div>`;
+    if(unlocked) b.onclick=()=>startQuiz(op,i);
+    wrap.appendChild(b);
+  }
+  go('levelsel');
+}
+
+/* ---------- soru üretimi ---------- */
+function rnd(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+function makeQuestion(op, lv){
+  if(op==='mix'){
+    const pool=['add','sub','mul','div'];
+    op = pool[rnd(0,3)];
+  }
+  let a,b,ans,sym;
+  if(op==='add'){
+    sym='+';
+    if(lv===1){ a=rnd(5,60); b=rnd(3,40); }
+    else if(lv===2){ a=rnd(100,400); b=rnd(20,90); }
+    else if(lv===3){ a=rnd(150,700); b=rnd(120,600); }
+    else { a=rnd(500,3500); b=rnd(400,3000); }
+    ans=a+b;
+  } else if(op==='sub'){
+    sym='−';
+    if(lv===1){ a=rnd(20,90); b=rnd(3,a); }
+    else if(lv===2){ a=rnd(100,400); b=rnd(20,99); }
+    else if(lv===3){ a=rnd(300,900); b=rnd(120,299); }
+    else { a=rnd(1000,5000); b=rnd(300,999); }
+    if(b>a){const t=a;a=b;b=t;}
+    ans=a-b;
+  } else if(op==='mul'){
+    sym='×';
+    if(lv===1){ a=rnd(2,9); b=rnd(2,9); }
+    else if(lv===2){ a=rnd(11,49); b=rnd(2,9); }
+    else if(lv===3){ a=rnd(11,29); b=rnd(11,29); }
+    else { a=rnd(21,99); b=rnd(12,49); }
+    ans=a*b;
+  } else { // div — her zaman tam bölünür
+    sym='÷';
+    let q,d;
+    if(lv===1){ d=rnd(2,9); q=rnd(2,9); }
+    else if(lv===2){ d=rnd(2,9); q=rnd(3,12); }
+    else if(lv===3){ d=rnd(3,9); q=rnd(15,60); }
+    else { d=rnd(6,19); q=rnd(12,80); }
+    a=q*d; b=d; ans=q;
+  }
+  return { text:`${a} ${sym} ${b}`, ans };
+}
+
+/* ---------- sınav akışı ---------- */
+let quiz = null;
+function startQuiz(op,lv){
+  state.op=op; state.level=lv;
+  quiz = { op, lv, i:0, correct:0, results:[], q:null, locked:false, input:'' };
+  buildKeypad();
+  renderDots();
+  nextQuestion();
+  go('quiz');
+}
+function renderDots(){
+  const d=document.getElementById('dots'); d.innerHTML='';
+  for(let k=0;k<3;k++){
+    const s=document.createElement('div');
+    s.className='dot';
+    if(k<quiz.results.length) s.classList.add(quiz.results[k]?'done':'miss');
+    else if(k===quiz.i) s.classList.add('now');
+    d.appendChild(s);
+  }
+}
+function nextQuestion(){
+  quiz.q = makeQuestion(quiz.op, quiz.lv);
+  quiz.input=''; quiz.locked=false;
+  document.getElementById('qmeta').textContent = `Soru ${quiz.i+1} / 3 · ${OPNAME[quiz.op==='mix'?'mix':quiz.op]}`;
+  document.getElementById('question').textContent = quiz.q.text + ' =';
+  const box=document.getElementById('answerbox');
+  box.textContent='?'; box.className='answerbox';
+  document.getElementById('fb').textContent=''; document.getElementById('fb').className='fb';
+  document.getElementById('nextbtn').style.display='none';
+  document.getElementById('keypad').style.display='grid';
+  renderDots();
+  updateBox();
+}
+function buildKeypad(){
+  const kp=document.getElementById('keypad'); kp.innerHTML='';
+  const keys=['1','2','3','4','5','6','7','8','9','del','0','ok'];
+  keys.forEach(k=>{
+    const b=document.createElement('button');
+    b.className='key'+(k==='del'?' del':'')+(k==='ok'?' ok':'');
+    b.textContent = k==='del'?'⌫' : k==='ok'?'✓' : k;
+    b.onclick=()=>press(k);
+    if(k==='ok') b.id='okkey';
+    kp.appendChild(b);
+  });
+}
+function press(k){
+  if(quiz.locked) return;
+  beep(660,0.03);
+  if(k==='del'){ quiz.input=quiz.input.slice(0,-1); }
+  else if(k==='ok'){ submit(); return; }
+  else { if(quiz.input.length<7) quiz.input+=k; }
+  updateBox();
+}
+function updateBox(){
+  const box=document.getElementById('answerbox');
+  box.textContent = quiz.input===''?'?':quiz.input;
+  box.classList.toggle('filled', quiz.input!=='');
+  document.getElementById('okkey').disabled = quiz.input==='';
+}
+function submit(){
+  if(quiz.input==='' || quiz.locked) return;
+  quiz.locked=true;
+  const val=parseInt(quiz.input,10);
+  const ok = val===quiz.q.ans;
+  const box=document.getElementById('answerbox');
+  const fb=document.getElementById('fb');
+  quiz.results.push(ok);
+  if(ok){
+    quiz.correct++; state.stars++; state.streak++;
+    box.className='answerbox correct';
+    fb.className='fb correct';
+    fb.textContent = pick(['Doğru! 🎉','Süper! ⭐','Harika Erdem! 👏','Tam isabet! 🎯']);
+    burst(24); beep(880,0.09); setTimeout(()=>beep(1180,0.12),90);
+  } else {
+    state.streak=0;
+    box.className='answerbox wrong';
+    fb.className='fb wrong';
+    fb.textContent = `Olsun! Doğrusu: ${quiz.q.ans}`;
+    shake(box); beep(200,0.18);
+  }
+  syncHud();
+  renderDots();
+  document.getElementById('keypad').style.display='none';
+  const nb=document.getElementById('nextbtn');
+  nb.style.display='block';
+  nb.textContent = quiz.i>=2 ? 'Sonuçları gör 🏆' : 'Sonraki soru →';
+  nb.onclick = ()=>{
+    quiz.i++;
+    if(quiz.i>=3) finishQuiz();
+    else nextQuestion();
+  };
+}
+
+/* ---------- sonuç ---------- */
+function finishQuiz(){
+  const c=quiz.correct;
+  // oturum istatistiklerini güncelle
+  sessionStats.quizzes++;
+  sessionStats.totalQ += 3;
+  sessionStats.totalCorrect += c;
+  const okey = quiz.op;
+  if(!sessionStats.byOp[okey]) sessionStats.byOp[okey]={q:0,correct:0};
+  sessionStats.byOp[okey].q += 3;
+  sessionStats.byOp[okey].correct += c;
+  // seviye açma
+  let unlockedNew=false;
+  if(c>=2 && quiz.lv<4 && state.unlocked[quiz.op] < quiz.lv+1){
+    state.unlocked[quiz.op] = quiz.lv+1;
+    unlockedNew=true;
+  }
+  if(c===3){ state.stars+=2; syncHud(); } // 3/3 bonusu
+
+  const emo=document.getElementById('rEmo');
+  const title=document.getElementById('rTitle');
+  const msg=document.getElementById('rMsg');
+  const conf={
+    3:{e:'🏆', t:`Mükemmel ${KID}!`, m:'Üç sorunun üçünü de doğru yaptın. Sen gerçek bir matematik yıldızısın! ⭐ (+2 bonus yıldız)'},
+    2:{e:'🎉', t:`Aferin ${KID}!`, m:'Çok iyiydin, sadece biri kaçtı. Böyle devam! 👏'},
+    1:{e:'💪', t:`İyi deneme ${KID}!`, m:'Bir tanesini doğru yaptın. Biraz daha pratikle çok daha iyi olacaksın!'},
+    0:{e:'🌱', t:`Pes yok ${KID}!`, m:'Bu sefer olmadı ama önemli değil. Tekrar deneyelim, sen yapabilirsin! 🌟'},
+  }[c];
+  emo.textContent=conf.e; title.textContent=conf.t; msg.textContent=conf.m;
+
+  const sw=document.getElementById('rStars'); sw.innerHTML='';
+  for(let k=0;k<3;k++){
+    const s=document.createElement('div');
+    s.className='starbox'+(k<c?' on':'');
+    s.style.animationDelay=(k*0.15)+'s';
+    s.textContent='⭐';
+    sw.appendChild(s);
+  }
+  const nb=document.getElementById('newbadge');
+  nb.classList.toggle('show', unlockedNew);
+  if(unlockedNew) nb.textContent = `🔓 Seviye ${quiz.lv+1} açıldı!`;
+
+  go('result');
+  if(c>=2){ setTimeout(()=>rain(c===3?90:45), 200); }
+}
+function replay(){ startQuiz(quiz.op, quiz.lv); }
+function quitQuiz(){ go('home'); }
+
+/* ---------- veli raporu ---------- */
+function accuracy(){ return sessionStats.totalQ ? Math.round(100*sessionStats.totalCorrect/sessionStats.totalQ) : 0; }
+
+function openReport(){
+  const s=sessionStats;
+  document.getElementById('repWhen').textContent = 'Oturum başlangıcı: ' + fmtWhen(s.startedAt);
+  document.getElementById('repStars').textContent = state.stars;
+  document.getElementById('repQuiz').textContent = s.quizzes;
+  document.getElementById('repQ').textContent = s.totalCorrect + ' / ' + s.totalQ;
+  document.getElementById('repAcc').textContent = s.totalQ ? ('%'+accuracy()) : '—';
+  const wrap=document.getElementById('repByOp'); wrap.innerHTML='';
+  Object.keys(s.byOp).forEach(op=>{
+    const d=s.byOp[op]; const pct = d.q? Math.round(100*d.correct/d.q):0;
+    const row=document.createElement('div'); row.className='oprow';
+    row.innerHTML=`<span style="min-width:74px">${OPNAME[op]}</span>
+      <span class="bar"><i style="width:${pct}%"></i></span>
+      <b>${d.correct}/${d.q}</b>`;
+    wrap.appendChild(row);
+  });
+  const note=document.getElementById('repNote');
+  if(s.totalQ===0){ note.textContent='Henüz sınav çözülmedi. Erdem birkaç soru çözünce burada özet görünecek.'; }
+  else { note.textContent='📱 "WhatsApp\'tan Babama Gönder" butonuna basınca bu özet WhatsApp\'ta hazır gelir, Erdem babasını seçip yollar.'; }
+  go('report2');
+}
+
+function buildReportText(forLastQuiz){
+  const s=sessionStats;
+  let lines=[];
+  lines.push(KID+' — Matematik Raporu');
+  lines.push(fmtWhen(new Date()));
+  lines.push('');
+  if(forLastQuiz && quiz){
+    lines.push('Son sınav: '+OPNAME[quiz.op]+' · Seviye '+quiz.lv);
+    lines.push('Sonuç: '+quiz.correct+' / 3 doğru');
+    lines.push('');
+  }
+  lines.push('— Bu oturum toplamı —');
+  lines.push('Çözülen sınav: '+s.quizzes);
+  lines.push('Doğru/Toplam soru: '+s.totalCorrect+' / '+s.totalQ+(s.totalQ?(' (%'+accuracy()+')'):''));
+  lines.push('Toplanan yıldız: '+state.stars);
+  if(Object.keys(s.byOp).length){
+    lines.push('');
+    lines.push('İşlem bazında:');
+    Object.keys(s.byOp).forEach(op=>{
+      const d=s.byOp[op]; const pct=d.q?Math.round(100*d.correct/d.q):0;
+      lines.push('• '+OPNAME[op]+': '+d.correct+'/'+d.q+' (%'+pct+')');
+    });
+  }
+  return lines.join('\n');
+}
+
+function shareReport(){
+  const text = buildReportText(!!quiz);
+  const base = CONFIG.whatsappNumber
+    ? 'https://wa.me/'+CONFIG.whatsappNumber+'?text='
+    : 'https://wa.me/?text=';
+  window.open(base + encodeURIComponent(text), '_blank');
+  toast('WhatsApp açılıyor 📲');
+}
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+/* ---------- yardımcılar ---------- */
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function shake(el){ el.animate([{transform:'translateX(0)'},{transform:'translateX(-9px)'},{transform:'translateX(9px)'},{transform:'translateX(-6px)'},{transform:'translateX(0)'}],{duration:340}); }
+
+/* ---------- ses ---------- */
+let actx=null;
+function beep(freq,dur){
+  if(!state.sound) return;
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type='sine'; o.frequency.value=freq;
+    o.connect(g); g.connect(actx.destination);
+    g.gain.setValueAtTime(0.12, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur);
+    o.start(); o.stop(actx.currentTime+dur);
+  }catch(e){}
+}
+document.getElementById('sound').onclick=function(){
+  state.sound=!state.sound;
+  this.textContent = state.sound?'🔊':'🔇';
+};
+
+/* ---------- konfeti ---------- */
+const cv=document.getElementById('fx'), cx=cv.getContext('2d');
+let parts=[];
+function resize(){ cv.width=innerWidth; cv.height=innerHeight; }
+resize(); addEventListener('resize',resize);
+const COLORS=['#f59e0b','#ec4899','#22c55e','#3b82f6','#a78bfa','#ef4444','#facc15'];
+function rain(n){
+  for(let i=0;i<n;i++) parts.push({
+    x:Math.random()*cv.width, y:-20-Math.random()*cv.height*0.3,
+    vx:(Math.random()-0.5)*3, vy:2+Math.random()*4,
+    s:6+Math.random()*8, rot:Math.random()*6, vr:(Math.random()-0.5)*0.3,
+    c:COLORS[i%COLORS.length], life:120+Math.random()*60
+  });
+  loop();
+}
+function burst(n){
+  const cx0=cv.width/2, cy0=cv.height*0.42;
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, sp=2+Math.random()*6;
+    parts.push({x:cx0,y:cy0,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-2,s:5+Math.random()*7,rot:Math.random()*6,vr:(Math.random()-0.5)*0.4,c:COLORS[i%COLORS.length],life:60+Math.random()*40});
+  }
+  loop();
+}
+let running=false;
+function loop(){
+  if(running) return; running=true;
+  (function frame(){
+    cx.clearRect(0,0,cv.width,cv.height);
+    parts.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.08; p.rot+=p.vr; p.life--;
+      cx.save(); cx.translate(p.x,p.y); cx.rotate(p.rot); cx.fillStyle=p.c;
+      cx.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.6); cx.restore();
+    });
+    parts=parts.filter(p=>p.life>0 && p.y<cv.height+30);
+    if(parts.length){ requestAnimationFrame(frame); }
+    else { cx.clearRect(0,0,cv.width,cv.height); running=false; }
+  })();
+}
+
+/* ---------- başlat ---------- */
+buildHome();
+syncHud();
+</script>
+</body>
+</html>
