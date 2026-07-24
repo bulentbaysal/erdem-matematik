@@ -344,6 +344,12 @@
       <div id="repHistory" style="margin-top:6px;"></div>
       <button class="sendbtn" onclick="shareReport()">📲 WhatsApp'tan Babama Gönder</button>
       <div class="note" id="repNote"></div>
+      <div style="margin-top:14px;text-align:center;color:var(--muted);font-size:11px;font-weight:600">
+        <details>
+          <summary style="cursor:pointer">Sürüm <b id="verNow" style="color:var(--bg2)">v1.6</b> · Erdematik 🦉</summary>
+          <div id="verList" style="margin-top:8px;text-align:left;line-height:1.7;padding:0 4px"></div>
+        </details>
+      </div>
     </div>
   </section>
 </div>
@@ -1146,10 +1152,35 @@ function loop(){
   })();
 }
 
+/* ---------- sürüm bilgisi ---------- */
+const APP_VERSION='v1.6';
+const VERSIONS=[
+  {v:'v1.6', d:'Geçmişte tarih-saat; teste dokununca o testin PDF karnesi'},
+  {v:'v1.5', d:'Uygulama adı Erdematik + baykuş ana ekran ikonu'},
+  {v:'v1.4', d:'Kalıcı kayıt + cihazlar arası otomatik eşitleme (tek Erdem hafızası)'},
+  {v:'v1.3', d:'WhatsApp’tan PDF karne (skor, cevaplar, yanlışlar kırmızı)'},
+  {v:'v1.2', d:'5 ders: Türkçe, Hayat Bilgisi, Fen, İngilizce + 360 özgün soru'},
+  {v:'v1.1', d:'Veli Raporu + WhatsApp’tan paylaşım'},
+  {v:'v1.0', d:'Matematik: 30 soru, süre çizgisi, 4 seviye, yıldız/konfeti'},
+];
+function renderVersionInfo(){
+  const now=document.getElementById('verNow'); if(now) now.textContent=APP_VERSION;
+  const list=document.getElementById('verList'); if(!list) return;
+  list.innerHTML='';
+  VERSIONS.forEach((x,i)=>{
+    const row=document.createElement('div');
+    const b=document.createElement('b'); b.style.color=(i===0?'#16a34a':'#6b6890'); b.textContent=x.v;
+    row.appendChild(b);
+    row.appendChild(document.createTextNode(' — '+x.d+(i===0?' ✅ (şu an)':'')));
+    list.appendChild(row);
+  });
+}
+
 /* ---------- başlat ---------- */
 loadProgress();
 buildSubjects();
 buildHome();
+renderVersionInfo();
 syncHud();
 syncNow();  // açılışta diğer cihazla eşitle
 // uygulamaya her geri dönüşte eşitle (kopya önleme swap'ından ayrı)
