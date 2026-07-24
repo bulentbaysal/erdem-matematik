@@ -333,8 +333,11 @@
       <div class="stat"><b>✅ Doğru / Toplam soru</b><span class="v" id="repQ">0 / 0</span></div>
       <div class="stat"><b>🎯 Başarı oranı</b><span class="v" id="repAcc">—</span></div>
       <div id="repByOp" style="margin-top:10px;"></div>
+      <div style="margin-top:16px;font-weight:800;color:var(--bg2);font-size:15px">📚 Çözülen Testler</div>
+      <div id="repHistory" style="margin-top:6px;"></div>
       <button class="sendbtn" onclick="shareReport()">📲 WhatsApp'tan Babama Gönder</button>
       <div class="note" id="repNote"></div>
+      <button id="resetBtn" onclick="resetProgress()" style="margin-top:10px;width:100%;background:#fee2e2;color:#991b1b;border:none;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">🗑️ İlerlemeyi sıfırla</button>
     </div>
   </section>
 </div>
@@ -359,6 +362,51 @@ const sessionStats = {
 function fmtWhen(d){
   try{ return d.toLocaleString('tr-TR',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}); }
   catch(e){ return d.toString(); }
+}
+
+/* ---------- kalıcı kayıt (telefon hafızası) ---------- */
+const STORE_KEY='erdem_ders_v1';
+let history = [];
+function loadProgress(){
+  try{
+    const raw=localStorage.getItem(STORE_KEY); if(!raw) return;
+    const s=JSON.parse(raw);
+    if(typeof s.stars==='number') state.stars=s.stars;
+    if(s.unlocked) for(const k in s.unlocked){ if(state.unlocked[k]!=null) state.unlocked[k]=s.unlocked[k]; }
+    if(s.stats){
+      sessionStats.quizzes=s.stats.quizzes||0;
+      sessionStats.totalQ=s.stats.totalQ||0;
+      sessionStats.totalCorrect=s.stats.totalCorrect||0;
+      sessionStats.byOp=s.stats.byOp||{};
+    }
+    if(s.firstUse) sessionStats.startedAt=new Date(s.firstUse);
+    if(Array.isArray(s.history)) history=s.history;
+  }catch(e){}
+}
+function saveProgress(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      stars: state.stars,
+      unlocked: state.unlocked,
+      stats: { quizzes:sessionStats.quizzes, totalQ:sessionStats.totalQ, totalCorrect:sessionStats.totalCorrect, byOp:sessionStats.byOp },
+      firstUse: (sessionStats.startedAt instanceof Date) ? sessionStats.startedAt.getTime() : Date.now(),
+      history: history.slice(-100)
+    }));
+  }catch(e){}
+}
+function resetProgress(){
+  const btn=document.getElementById('resetBtn');
+  if(btn.dataset.armed!=='1'){
+    btn.dataset.armed='1'; btn.textContent='⚠️ Emin misin? Tekrar dokun';
+    setTimeout(()=>{ btn.dataset.armed='0'; btn.textContent='🗑️ İlerlemeyi sıfırla'; },3000);
+    return;
+  }
+  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  state.stars=0; state.streak=0;
+  state.unlocked={ add:1, sub:1, mul:1, div:1, mix:1 };
+  sessionStats.quizzes=0; sessionStats.totalQ=0; sessionStats.totalCorrect=0; sessionStats.byOp={}; sessionStats.startedAt=new Date();
+  history=[];
+  syncHud(); toast('İlerleme sıfırlandı'); openReport();
 }
 
 /* ---------- oyun ayarları ---------- */
@@ -797,8 +845,11 @@ function finishQuiz(){
   nb.classList.toggle('show', unlockedNew);
   if(unlockedNew) nb.textContent = `🔓 Seviye ${quiz.lv+1} açıldı!`;
 
+  history.push({ label:quiz.label, key:quiz.reportKey, correct:c, len:L, pct:pct, ts:Date.now() });
+  saveProgress();
+
   go('result');
-  if(c>=PASS_MARK){ setTimeout(()=>rain(c===QUIZ_LEN?120:60), 200); }
+  if(pct>=70){ setTimeout(()=>rain(c===L?120:60), 200); }
 }
 function replay(){ if(quiz.mode==='math') startQuiz(quiz.op, quiz.lv); else startMcqQuiz(quiz.subjKey, quiz.ti); }
 function quitQuiz(){ clearTimer(); go(quiz && quiz.back ? quiz.back : 'subjects'); }
@@ -808,7 +859,7 @@ function accuracy(){ return sessionStats.totalQ ? Math.round(100*sessionStats.to
 
 function openReport(){
   const s=sessionStats;
-  document.getElementById('repWhen').textContent = 'Oturum başlangıcı: ' + fmtWhen(s.startedAt);
+  document.getElementById('repWhen').textContent = 'İlk kullanımdan bu yana · '+fmtWhen(s.startedAt);
   document.getElementById('repStars').textContent = state.stars;
   document.getElementById('repQuiz').textContent = s.quizzes;
   document.getElementById('repQ').textContent = s.totalCorrect + ' / ' + s.totalQ;
@@ -823,9 +874,26 @@ function openReport(){
     row.appendChild(nmS); row.appendChild(bar); row.appendChild(sc);
     wrap.appendChild(row);
   });
+  // çözülen testler geçmişi (en yeni üstte)
+  const hw=document.getElementById('repHistory'); hw.innerHTML='';
+  if(!history.length){
+    const e=document.createElement('div'); e.style.cssText='color:var(--muted);font-size:13px;font-weight:600;padding:4px 2px';
+    e.textContent='Henüz test çözülmedi.'; hw.appendChild(e);
+  } else {
+    history.slice().reverse().slice(0,30).forEach(h=>{
+      const pc=h.pct!=null?h.pct:(h.len?Math.round(100*h.correct/h.len):0);
+      const col=pc>=70?'#16a34a':(pc>=40?'#f59e0b':'#dc2626');
+      const r=document.createElement('div');
+      r.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid #eee;';
+      const lbl=document.createElement('span'); lbl.style.cssText='flex:1;font-size:13px;font-weight:600'; lbl.textContent=h.label;
+      const dt=document.createElement('span'); dt.style.cssText='font-size:11px;color:var(--muted)'; try{dt.textContent=new Date(h.ts).toLocaleDateString('tr-TR',{day:'numeric',month:'short'});}catch(e){}
+      const sc=document.createElement('b'); sc.style.cssText='color:'+col+';font-size:13px;min-width:72px;text-align:right'; sc.textContent=h.correct+'/'+h.len+' (%'+pc+')';
+      r.appendChild(lbl); r.appendChild(dt); r.appendChild(sc); hw.appendChild(r);
+    });
+  }
   const note=document.getElementById('repNote');
-  if(s.totalQ===0){ note.textContent='Henüz sınav çözülmedi. Erdem birkaç soru çözünce burada özet görünecek.'; }
-  else { note.textContent='📱 "WhatsApp\'tan Babama Gönder" butonuna basınca bu özet WhatsApp\'ta hazır gelir, Erdem babasını seçip yollar.'; }
+  if(s.totalQ===0){ note.textContent='Henüz test çözülmedi. Erdem test çözünce burada özet ve geçmiş görünecek.'; }
+  else { note.textContent='💾 İlerleme telefonun hafızasına kaydedilir; uygulama kapatılıp açılınca kaybolmaz. 📱 "Babama Gönder" ile karneyi WhatsApp\'tan paylaşabilirsin.'; }
   go('report2');
 }
 
@@ -1023,6 +1091,7 @@ function loop(){
 }
 
 /* ---------- başlat ---------- */
+loadProgress();
 buildSubjects();
 buildHome();
 syncHud();
