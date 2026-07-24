@@ -337,7 +337,6 @@
       <div id="repHistory" style="margin-top:6px;"></div>
       <button class="sendbtn" onclick="shareReport()">📲 WhatsApp'tan Babama Gönder</button>
       <div class="note" id="repNote"></div>
-      <button id="resetBtn" onclick="resetProgress()" style="margin-top:10px;width:100%;background:#fee2e2;color:#991b1b;border:none;border-radius:12px;padding:10px;font-weight:800;font-size:13px;cursor:pointer">🗑️ İlerlemeyi sıfırla</button>
     </div>
   </section>
 </div>
@@ -364,49 +363,87 @@ function fmtWhen(d){
   catch(e){ return d.toString(); }
 }
 
-/* ---------- kalıcı kayıt (telefon hafızası) ---------- */
+/* ---------- kalıcı kayıt + cihazlar arası eşitleme ---------- */
 const STORE_KEY='erdem_ders_v1';
+const SYNC_URL='https://jsonblob.com/api/jsonBlob/019f9307-31fa-7dd6-b5eb-5ec8943801a6';
 let history = [];
+
+function genId(){ return Date.now().toString(36)+'-'+Math.floor(Math.random()*1e9).toString(36); }
+function migrateEntry(e){ if(e && !e.id) e.id=genId(); return e; }
+
+// bir testten kazanılan yıldız (doğru + bonus) — hem eski hem yeni kayıtlar için
+function starsForEntry(e){
+  const len=e.len||0, correct=e.correct||0;
+  const isMath=(e.key||'').indexOf('Matematik')===0;
+  const pct=(e.pct!=null)?e.pct:(len?Math.round(100*correct/len):0);
+  const passMark=isMath?PASS_MARK:Math.ceil(len*0.7);
+  let bonus=0;
+  if(len && correct===len) bonus=5; else if(pct>=85) bonus=3; else if(correct>=passMark) bonus=1;
+  return correct+bonus;
+}
+// her şeyi (yıldız, seviye, istatistik) geçmişten yeniden hesapla — birleştirmeye dayanıklı
+function recompute(){
+  let stars=0, q=0, tq=0, tc=0; const byOp={};
+  const unl={add:1,sub:1,mul:1,div:1,mix:1};
+  history.forEach(e=>{
+    stars+=starsForEntry(e);
+    q++; tq+=e.len||0; tc+=e.correct||0;
+    const k=e.key||'?'; if(!byOp[k])byOp[k]={q:0,correct:0}; byOp[k].q+=e.len||0; byOp[k].correct+=e.correct||0;
+    if(e.op && e.lv && (e.correct>=PASS_MARK) && e.lv<4 && unl[e.op]!=null) unl[e.op]=Math.max(unl[e.op], e.lv+1);
+  });
+  // saklanan seviye kilidiyle birleştir (geri gitmesin)
+  for(const k in unl){ if(state.unlocked[k]) unl[k]=Math.max(unl[k], state.unlocked[k]); }
+  state.stars=stars; state.unlocked=unl;
+  sessionStats.quizzes=q; sessionStats.totalQ=tq; sessionStats.totalCorrect=tc; sessionStats.byOp=byOp;
+  syncHud();
+}
+function recordObj(){
+  return { v:2,
+    firstUse:(sessionStats.startedAt instanceof Date)?sessionStats.startedAt.getTime():Date.now(),
+    unlocked: state.unlocked,
+    history: history.slice(-300) };
+}
 function loadProgress(){
   try{
-    const raw=localStorage.getItem(STORE_KEY); if(!raw) return;
-    const s=JSON.parse(raw);
-    if(typeof s.stars==='number') state.stars=s.stars;
-    if(s.unlocked) for(const k in s.unlocked){ if(state.unlocked[k]!=null) state.unlocked[k]=s.unlocked[k]; }
-    if(s.stats){
-      sessionStats.quizzes=s.stats.quizzes||0;
-      sessionStats.totalQ=s.stats.totalQ||0;
-      sessionStats.totalCorrect=s.stats.totalCorrect||0;
-      sessionStats.byOp=s.stats.byOp||{};
+    const raw=localStorage.getItem(STORE_KEY);
+    if(raw){
+      const s=JSON.parse(raw);
+      if(s.firstUse) sessionStats.startedAt=new Date(s.firstUse);
+      if(s.unlocked) for(const k in state.unlocked){ if(s.unlocked[k]) state.unlocked[k]=Math.max(state.unlocked[k], s.unlocked[k]); }
+      const h = Array.isArray(s.history)?s.history : (Array.isArray(s)?s:[]);
+      history = h.map(migrateEntry);
     }
-    if(s.firstUse) sessionStats.startedAt=new Date(s.firstUse);
-    if(Array.isArray(s.history)) history=s.history;
   }catch(e){}
+  recompute();
 }
-function saveProgress(){
+function saveProgress(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(recordObj())); }catch(e){} }
+
+function mergeHistory(a,b){
+  const m=new Map();
+  (a||[]).forEach(e=>{ if(e&&e.id) m.set(e.id,e); });
+  (b||[]).forEach(e=>{ if(e&&e.id&&!m.has(e.id)) m.set(e.id,e); });
+  return Array.from(m.values()).sort((x,y)=>(x.ts||0)-(y.ts||0));
+}
+let syncing=false;
+async function syncNow(){
+  if(syncing) return; syncing=true;
   try{
-    localStorage.setItem(STORE_KEY, JSON.stringify({
-      stars: state.stars,
-      unlocked: state.unlocked,
-      stats: { quizzes:sessionStats.quizzes, totalQ:sessionStats.totalQ, totalCorrect:sessionStats.totalCorrect, byOp:sessionStats.byOp },
-      firstUse: (sessionStats.startedAt instanceof Date) ? sessionStats.startedAt.getTime() : Date.now(),
-      history: history.slice(-100)
-    }));
+    let cloud=null;
+    try{ const r=await fetch(SYNC_URL,{cache:'no-store'}); if(r.ok) cloud=await r.json(); }catch(e){}
+    const cloudHist=(cloud&&cloud.history)||[];
+    if(cloud&&cloud.unlocked){ for(const k in state.unlocked){ if(cloud.unlocked[k]) state.unlocked[k]=Math.max(state.unlocked[k], cloud.unlocked[k]); } }
+    const before=history.length;
+    const merged=mergeHistory(history, cloudHist.map(migrateEntry));
+    const changed=(merged.length!==before);
+    history=merged; recompute(); saveProgress();
+    // bulutta eksik varsa geri yaz
+    const cloudNeeds = !cloud || cloudHist.length!==merged.length || !cloud.unlocked;
+    if(cloudNeeds){
+      try{ await fetch(SYNC_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(recordObj())}); }catch(e){}
+    }
+    if(changed && document.getElementById('report2').classList.contains('active')) openReport();
   }catch(e){}
-}
-function resetProgress(){
-  const btn=document.getElementById('resetBtn');
-  if(btn.dataset.armed!=='1'){
-    btn.dataset.armed='1'; btn.textContent='⚠️ Emin misin? Tekrar dokun';
-    setTimeout(()=>{ btn.dataset.armed='0'; btn.textContent='🗑️ İlerlemeyi sıfırla'; },3000);
-    return;
-  }
-  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
-  state.stars=0; state.streak=0;
-  state.unlocked={ add:1, sub:1, mul:1, div:1, mix:1 };
-  sessionStats.quizzes=0; sessionStats.totalQ=0; sessionStats.totalCorrect=0; sessionStats.byOp={}; sessionStats.startedAt=new Date();
-  history=[];
-  syncHud(); toast('İlerleme sıfırlandı'); openReport();
+  syncing=false;
 }
 
 /* ---------- oyun ayarları ---------- */
@@ -794,23 +831,10 @@ function finishQuiz(){
   const c=quiz.correct, L=quiz.len;
   const pct=Math.round(100*c/L);
   const passMark = quiz.mode==='math' ? PASS_MARK : Math.ceil(L*0.7);
-  // oturum istatistiklerini güncelle
-  sessionStats.quizzes++;
-  sessionStats.totalQ += L;
-  sessionStats.totalCorrect += c;
-  const rk = quiz.reportKey;
-  if(!sessionStats.byOp[rk]) sessionStats.byOp[rk]={q:0,correct:0};
-  sessionStats.byOp[rk].q += L;
-  sessionStats.byOp[rk].correct += c;
-  // seviye açma (sadece matematik)
-  let unlockedNew=false;
-  if(quiz.mode==='math' && c>=PASS_MARK && quiz.lv<4 && state.unlocked[quiz.op] < quiz.lv+1){
-    state.unlocked[quiz.op] = quiz.lv+1;
-    unlockedNew=true;
-  }
+  // yeni seviye açıldı mı? (rozet için, kayıt öncesi tespit)
+  let unlockedNew = (quiz.mode==='math' && c>=PASS_MARK && quiz.lv<4 && state.unlocked[quiz.op] < quiz.lv+1);
   let bonus=0;
   if(c===L) bonus=5; else if(pct>=85) bonus=3; else if(c>=passMark) bonus=1;
-  if(bonus){ state.stars+=bonus; syncHud(); }
 
   // tebrik tonu
   const perfectMsg = quiz.mode==='math'
@@ -845,8 +869,12 @@ function finishQuiz(){
   nb.classList.toggle('show', unlockedNew);
   if(unlockedNew) nb.textContent = `🔓 Seviye ${quiz.lv+1} açıldı!`;
 
-  history.push({ label:quiz.label, key:quiz.reportKey, correct:c, len:L, pct:pct, ts:Date.now() });
+  history.push({ id:genId(), ts:Date.now(), mode:quiz.mode, label:quiz.label, key:quiz.reportKey,
+                 correct:c, len:L, pct:pct,
+                 op:(quiz.mode==='math'?quiz.op:null), lv:(quiz.mode==='math'?quiz.lv:null) });
+  recompute();      // yıldız / seviye / istatistikleri geçmişten güncelle
   saveProgress();
+  syncNow();        // cihazlar arası eşitle (arka planda)
 
   go('result');
   if(pct>=70){ setTimeout(()=>rain(c===L?120:60), 200); }
@@ -893,7 +921,7 @@ function openReport(){
   }
   const note=document.getElementById('repNote');
   if(s.totalQ===0){ note.textContent='Henüz test çözülmedi. Erdem test çözünce burada özet ve geçmiş görünecek.'; }
-  else { note.textContent='💾 İlerleme telefonun hafızasına kaydedilir; uygulama kapatılıp açılınca kaybolmaz. 📱 "Babama Gönder" ile karneyi WhatsApp\'tan paylaşabilirsin.'; }
+  else { note.textContent='💾 İlerleme kaydedilir ve internet varken tablet–telefon arasında otomatik eşitlenir; hangi cihazda çözerse çözsün kaldığı yerden devam eder. 📱 "Babama Gönder" ile karneyi WhatsApp\'tan paylaşabilirsin.'; }
   go('report2');
 }
 
@@ -1095,6 +1123,9 @@ loadProgress();
 buildSubjects();
 buildHome();
 syncHud();
+syncNow();  // açılışta diğer cihazla eşitle
+// uygulamaya her geri dönüşte eşitle (kopya önleme swap'ından ayrı)
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) syncNow(); });
 </script>
 </body>
 </html>
